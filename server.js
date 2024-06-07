@@ -2,15 +2,17 @@ const express = require('express');
 const bodyParser = require('body-parser');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 app.use(bodyParser.json());
+
+app.get('/health', (req, res) => {
+    res.status(200).send('OK');
+});
 
 // Authorize Request
 app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
     const { userName, password, datetime, deviceId, tagId, docType } = req.query;
-
-    // Validate the request here (e.g., check username and password)
 
     const responseJson = {
         ReqStatus: 1,
@@ -36,8 +38,6 @@ app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
 // Sales Registration
 app.post('/Api/Vrs/SaleData', (req, res) => {
     const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType } = req.query;
-
-    // Validate the request here (e.g., check username and password)
 
     const responseJson = {
         ReqStatus: 1,
