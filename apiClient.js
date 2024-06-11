@@ -16,7 +16,7 @@ const authorizeRequest = async () => {
                 },
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Basic cGV0cm9kZW1vOjEyMzQ='
+                    'Authorization': 'Basic cGV0cm9kZW1vOjEyMzQ=' // Replace with your actual base64-encoded credentials
                 }
             }
         );
@@ -51,7 +51,7 @@ const salesRegistration = async () => {
                 },
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': 'Basic cGV0cm9kZW1vOjEyMzQ='
+                    'Authorization': 'Basic cGV0cm9kZW1vOjEyMzQ=' // Replace with your actual base64-encoded credentials
                 }
             }
         );
