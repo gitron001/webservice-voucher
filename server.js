@@ -1,23 +1,29 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const { authorizeRequest, salesRegistration } = require('./apiClient');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Middleware to handle both application/json and application/x-www-form-urlencoded
 app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
 app.get('/', (req, res) => {
-    res.status(200).send('Hello, Kumee!');
+    res.status(200).send('Hello, world!');
 });
 
 // Authorize Request Route
 app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
     const { userName, password, datetime, deviceId, tagId, docType } = req.query;
+
+    if (!userName || !password || !datetime || !deviceId || !tagId) {
+        res.status(400).send('Missing required query parameters');
+        return;
+    }
 
     const responseJson = {
         ReqStatus: 1,
@@ -44,6 +50,11 @@ app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
 app.post('/Api/Vrs/SaleData', (req, res) => {
     const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType } = req.query;
 
+    if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo) {
+        res.status(400).send('Missing required query parameters');
+        return;
+    }
+
     const responseJson = {
         ReqStatus: 1,
         ProcessStatus: 1,
@@ -62,25 +73,6 @@ app.post('/Api/Vrs/SaleData', (req, res) => {
         res.json(responseJson);
     } else {
         res.send(responseString);
-    }
-});
-
-// Test endpoints using apiClient.js functions
-app.get('/test-authorize', async (req, res) => {
-    try {
-        const data = await authorizeRequest();
-        res.json(data);
-    } catch (error) {
-        res.status(500).send('Error testing authorize request');
-    }
-});
-
-app.get('/test-sales', async (req, res) => {
-    try {
-        const data = await salesRegistration();
-        res.json(data);
-    } catch (error) {
-        res.status(500).send('Error testing sales registration');
     }
 });
 
