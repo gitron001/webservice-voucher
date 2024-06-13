@@ -18,10 +18,11 @@ app.get('/', (req, res) => {
 
 // Authorize Request Route
 app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
-    const { userName, password, datetime, deviceId, tagId, docType } = req.query;
+    const params = { ...req.query, ...req.body };
+    const { userName, password, datetime, deviceId, tagId, docType } = params;
 
     if (!userName || !password || !datetime || !deviceId || !tagId) {
-        res.status(400).send('Missing required query parameters');
+        res.status(400).send('Missing required parameters');
         return;
     }
 
@@ -48,10 +49,11 @@ app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
 
 // Sales Registration Route
 app.post('/Api/Vrs/SaleData', (req, res) => {
-    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType } = req.query;
+    const params = { ...req.query, ...req.body };
+    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType } = params;
 
     if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo) {
-        res.status(400).send('Missing required query parameters');
+        res.status(400).send('Missing required parameters');
         return;
     }
 
