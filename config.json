@@ -1,0 +1,10 @@
+{
+    "development": {
+      "username": "optusr",
+      "password": "Test123",
+      "database": "optqrcodes",
+      "host": "sql674.your-server.de",
+      "dialect": "mysql"
+    }
+  }
+  
