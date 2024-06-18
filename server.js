@@ -19,15 +19,50 @@ app.get('/', (req, res) => {
     res.status(200).send('Hello, world!');
 });
 
+// Function to parse configuration bits
+const parseConfigBits = (configBits) => {
+    return {
+        pomperCard: configBits[0] === '1',
+        discountCard: configBits[1] === '1',
+        customerCard: configBits[2] === '1',
+        vehicleIdentification: configBits[3] === '1',
+        carPlate: configBits[4] === '1',
+        carKm: configBits[5] === '1',
+        cardPinCode: configBits[6] === '1',
+        preset: configBits[7] === '1',
+        prepayment: configBits[8] === '1',
+        voucher: configBits[9] === '1'
+    };
+};
+
 // Authorize Request Route
 app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, datetime, deviceId, tagId, docType } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits } = params;
 
     console.log('AuthorizeRequest received:', params);
 
-    if (!userName || !password || !datetime || !deviceId || !tagId) {
+    if (!userName || !password || !datetime || !deviceId || !tagId || !configBits) {
         res.status(400).send('Missing required parameters');
+        return;
+    }
+
+    const config = parseConfigBits(configBits);
+    console.log('Parsed Config Bits:', config);
+
+    // Validate required data fields based on configBits
+    if (config.vehicleIdentification && !params.vehicleIdentificationTag) {
+        res.status(400).send('Missing vehicle identification tag');
+        return;
+    }
+
+    if (config.carPlate && !params.carPlate) {
+        res.status(400).send('Missing car plate number');
+        return;
+    }
+
+    if (config.prepayment && !params.prepayment) {
+        res.status(400).send('Missing prepayment');
         return;
     }
 
