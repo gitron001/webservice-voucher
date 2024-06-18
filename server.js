@@ -156,6 +156,41 @@ app.post('/Api/Vrs/SaleData', async (req, res) => {
     }
 });
 
+// Voucher Write Request Route
+app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
+    const { userName, password, companyId, stationID, deviceId, barCode, amount } = req.query;
+
+    console.log('VoucherWriteRequest received:', req.query);
+
+    if (!userName || !password || !companyId || !stationID || !deviceId || !barCode || !amount) {
+        res.status(400).send('Missing required parameters');
+        return;
+    }
+
+    try {
+        // Check if the barcode already exists
+        const existingVoucher = await Voucher.findOne({ where: { barCode: barCode } });
+        if (existingVoucher) {
+            res.status(200).send(`${deviceId}|${barCode}|0|`); // 0 = error or exists
+            return;
+        }
+
+        // Create a new voucher
+        const voucher = await Voucher.create({
+            companyID: companyId,
+            stationID: stationID,
+            barCode: barCode,
+            amount: amount,
+            status: 1 // 1 = valid
+        });
+
+        res.status(200).send(`${deviceId}|${barCode}|1|`); // 1 = OK
+    } catch (error) {
+        console.error('Error processing VoucherWriteRequest:', error);
+        res.status(500).send('Internal server error');
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running at http://localhost:${port}`);
 });
