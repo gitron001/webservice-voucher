@@ -2,6 +2,10 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../database');
 
 const Transaction = sequelize.define('Transaction', {
+  companyID: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   stationID: {
     type: DataTypes.INTEGER,
     allowNull: false,

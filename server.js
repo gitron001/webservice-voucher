@@ -38,11 +38,11 @@ const parseConfigBits = (configBits) => {
 // Authorize Request Route
 app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, datetime, deviceId, tagId, docType, configBits } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyID } = params;
 
     console.log('AuthorizeRequest received:', params);
 
-    if (!userName || !password || !datetime || !deviceId || !tagId || !configBits) {
+    if (!userName || !password || !datetime || !deviceId || !tagId || !configBits || !companyID) {
         res.status(400).send('Missing required parameters');
         return;
     }
@@ -103,17 +103,18 @@ app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
 // Sales Registration Route
 app.post('/Api/Vrs/SaleData', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType } = params;
+    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType, companyID } = params;
 
     console.log('SaleData received:', params);
 
-    if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo) {
+    if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo || !companyID) {
         res.status(400).send('Missing required parameters');
         return;
     }
 
     try {
         const transaction = await Transaction.create({
+            companyID: companyID,
             stationID: userName, // assuming userName is stationID, update as needed
             pumpNo: pumpNumber,
             nozzleNo: nozzleNumber,

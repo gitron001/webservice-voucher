@@ -2,6 +2,10 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../database');
 
 const Voucher = sequelize.define('Voucher', {
+  companyID: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+  },
   stationID: {
     type: DataTypes.INTEGER,
     allowNull: false,
