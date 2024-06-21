@@ -38,11 +38,11 @@ const parseConfigBits = (configBits) => {
 // Authorize Request Route
 app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyID } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId } = params;
 
     console.log('AuthorizeRequest received:', params);
 
-    if (!userName || !password || !datetime || !deviceId || !tagId || !configBits || !companyID) {
+    if (!userName || !password || !datetime || !deviceId || !tagId || !configBits || !companyId) {
         res.status(400).send('Missing required parameters');
         return;
     }
@@ -158,21 +158,21 @@ app.post('/Api/Vrs/SaleData', async (req, res) => {
 
 // Voucher Write Request Route
 app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
-    const { userName, password, companyID, stationID, deviceID, barCode, amount } = req.query;
+    const { userName, password, companyId, stationId, deviceId, barCode, amount } = req.query;
 
     console.log('VoucherWriteRequest received:', req.query);
 
     console.log('Missing parameter:', {
         userName: !!userName,
         password: !!password,
-        companyID: !!companyID,
-        stationID: !!stationID,
-        deviceID: !!deviceID,
+        companyId: !!companyId,
+        stationId: !!stationId,
+        deviceId: !!deviceId,
         barCode: !!barCode,
         amount: !!amount,
     });
 
-    if (!userName || !password || !companyID || !stationID || !deviceID || !barCode || !amount) {
+    if (!userName || !password || !companyId || !stationId || !deviceId || !barCode || !amount) {
         res.status(400).send('Missing required parameters');
         return;
     }
@@ -181,22 +181,22 @@ app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
         // Check if the barcode already exists
         const existingVoucher = await Voucher.findOne({ where: { barCode: barCode } });
         if (existingVoucher) {
-            res.status(200).send(`${deviceID}|${barCode}|0|`); // 0 = error or exists
+            res.status(200).send(`${deviceId}|${barCode}|0|`); // 0 = error or exists
             return;
         }
 
         // Create a new voucher
         const transNo = Math.floor(Math.random() * 1000000); // Generate a random transaction number
         const voucher = await Voucher.create({
-            companyID: companyID,
-            stationID: stationID,
+            companyId: companyId,
+            stationId: stationId,
             transNo: transNo,
             barCode: barCode,
             amount: amount,
             status: 1 // 1 = valid
         });
 
-        res.status(200).send(`${deviceID}|${barCode}|1|`); // 1 = OK
+        res.status(200).send(`${deviceId}|${barCode}|1|`); // 1 = OK
     } catch (error) {
         console.error('Error processing VoucherWriteRequest:', error);
         res.status(500).send('Internal server error');
