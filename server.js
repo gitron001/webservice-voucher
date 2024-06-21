@@ -5,7 +5,7 @@ const Transaction = require('./models/transaction');
 const Voucher = require('./models/voucher');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = process.env.PORT || 80; // Use port 80 since other ports aren't working for your client
 
 // Middleware to handle both application/json and application/x-www-form-urlencoded
 app.use(bodyParser.json());
@@ -158,11 +158,21 @@ app.post('/Api/Vrs/SaleData', async (req, res) => {
 
 // Voucher Write Request Route
 app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
-    const { userName, password, companyId, stationID, deviceId, barCode, amount } = req.query;
+    const { userName, password, companyID, stationID, deviceID, barCode, amount } = req.query;
 
     console.log('VoucherWriteRequest received:', req.query);
 
-    if (!userName || !password || !companyId || !stationID || !deviceId || !barCode || !amount) {
+    console.log('Missing parameter:', {
+        userName: !!userName,
+        password: !!password,
+        companyID: !!companyID,
+        stationID: !!stationID,
+        deviceID: !!deviceID,
+        barCode: !!barCode,
+        amount: !!amount,
+    });
+
+    if (!userName || !password || !companyID || !stationID || !deviceID || !barCode || !amount) {
         res.status(400).send('Missing required parameters');
         return;
     }
@@ -171,20 +181,22 @@ app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
         // Check if the barcode already exists
         const existingVoucher = await Voucher.findOne({ where: { barCode: barCode } });
         if (existingVoucher) {
-            res.status(200).send(`${deviceId}|${barCode}|0|`); // 0 = error or exists
+            res.status(200).send(`${deviceID}|${barCode}|0|`); // 0 = error or exists
             return;
         }
 
         // Create a new voucher
+        const transNo = Math.floor(Math.random() * 1000000); // Generate a random transaction number
         const voucher = await Voucher.create({
-            companyID: companyId,
+            companyID: companyID,
             stationID: stationID,
+            transNo: transNo,
             barCode: barCode,
             amount: amount,
             status: 1 // 1 = valid
         });
 
-        res.status(200).send(`${deviceId}|${barCode}|1|`); // 1 = OK
+        res.status(200).send(`${deviceID}|${barCode}|1|`); // 1 = OK
     } catch (error) {
         console.error('Error processing VoucherWriteRequest:', error);
         res.status(500).send('Internal server error');
