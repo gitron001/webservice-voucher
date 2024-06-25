@@ -5,7 +5,7 @@ const Transaction = require('./models/transaction');
 const Voucher = require('./models/voucher');
 
 const app = express();
-const port = process.env.PORT || 80; // Use port 80 since other ports aren't working for your client
+const port = process.env.PORT || 3000; // Use port 80 since other ports aren't working for your client
 
 // Middleware to handle both application/json and application/x-www-form-urlencoded
 app.use(bodyParser.json());
@@ -38,16 +38,16 @@ const parseConfigBits = (configBits) => {
 // Authorize Request Route
 app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId, stationId } = params;
 
     console.log('AuthorizeRequest received:', params);
 
-    if (!userName || !password || !datetime || !deviceId || !tagId || !configBits || !companyId) {
+    if (!userName || !password || !datetime || !deviceId || !tagId || !companyId || !stationId) {
         res.status(400).send('Missing required parameters');
         return;
     }
 
-    const config = parseConfigBits(configBits);
+    const config = configBits ? parseConfigBits(configBits) : {};
     console.log('Parsed Config Bits:', config);
 
     // Validate required data fields based on configBits
@@ -103,19 +103,19 @@ app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
 // Sales Registration Route
 app.post('/Api/Vrs/SaleData', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType, companyID } = params;
+    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType, companyId, stationId } = params;
 
     console.log('SaleData received:', params);
 
-    if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo || !companyID) {
+    if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo || !companyId || !stationId) {
         res.status(400).send('Missing required parameters');
         return;
     }
 
     try {
         const transaction = await Transaction.create({
-            companyID: companyID,
-            stationID: userName, // assuming userName is stationID, update as needed
+            companyId: companyId,
+            stationId: stationId,
             pumpNo: pumpNumber,
             nozzleNo: nozzleNumber,
             liters: liter,
