@@ -1,11 +1,24 @@
 const express = require('express');
 const bodyParser = require('body-parser');
+const session = require('express-session');
+const cookieParser = require('cookie-parser');
+const cors = require('cors');
 const Customer = require('./models/customer');
 const Transaction = require('./models/transaction');
 const Voucher = require('./models/voucher');
 
 const app = express();
-const port = process.env.PORT || 3000; // Use port 80 since other ports aren't working for your client
+const port = process.env.PORT || 3000; // Listen on port 3000
+
+// Middleware to handle sessions, cookies, and CORS
+app.use(cookieParser());
+app.use(session({ secret: 'ssshhhhh', saveUninitialized: true, resave: true }));
+app.use(cors());
+app.use(function(req, res, next) {
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept");
+    next();
+});
 
 // Middleware to handle both application/json and application/x-www-form-urlencoded
 app.use(bodyParser.json());
@@ -203,6 +216,6 @@ app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
     }
 });
 
-app.listen(port, () => {
+app.listen(port, '0.0.0.0', () => {
     console.log(`Server running at http://localhost:${port}`);
 });
