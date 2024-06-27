@@ -3,6 +3,9 @@ const bodyParser = require('body-parser');
 const session = require('express-session');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
+const Customer = require('./models/customer');
+const Transaction = require('./models/transaction');
+const Voucher = require('./models/voucher');
 
 const app = express();
 const port = process.env.PORT || 3000; // Listen on port 3000
@@ -45,9 +48,32 @@ const parseConfigBits = (configBits) => {
     };
 };
 
+// Middleware to log all incoming requests
+app.use((req, res, next) => {
+    console.log(`Received ${req.method} request to ${req.url}`);
+    console.log('Headers:', req.headers);
+    console.log('Query:', req.query);
+    console.log('Body:', req.body);
+    next();
+});
+
+// Function to extract parameters from both query and body
+const extractParams = (req, keys) => {
+    const params = {};
+    keys.forEach(key => {
+        if (req.query[key] !== undefined) {
+            params[key] = req.query[key];
+        } else if (req.body[key] !== undefined) {
+            params[key] = req.body[key];
+        }
+    });
+    return params;
+};
+
 // Authorize Request Route
-app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
-    const params = { ...req.query, ...req.body };
+app.post('/Api/Vrs/AuthorizeRequest', async (req, res) => {
+    const keys = ['userName', 'password', 'datetime', 'deviceId', 'tagId', 'docType', 'configBits', 'companyId', 'stationId'];
+    const params = extractParams(req, keys);
     const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId, stationId } = params;
 
     console.log('AuthorizeRequest received:', params);
@@ -76,32 +102,44 @@ app.post('/Api/Vrs/AuthorizeRequest', (req, res) => {
         return;
     }
 
-    const responseJson = {
-        ReqStatus: 1,
-        ProcessStatus: 1,
-        DeviceId: deviceId,
-        TagId: tagId,
-        LimitType: 1,
-        Limit: 990.000,
-        Plate: "42ABC42", // Placeholder value
-        IsError: 0,
-        ResponseCode: 1
-    };
+    try {
+        const customer = await Customer.findOne({ where: { cardNumber: tagId } });
+        if (!customer) {
+            res.status(404).send('Customer not found');
+            return;
+        }
 
-    const responseString = `${deviceId}|${tagId}|1|1|Liter|990,000|42ABC42|0|1`; // Placeholder value
+        const responseJson = {
+            ReqStatus: 1,
+            ProcessStatus: 1,
+            DeviceId: deviceId,
+            TagId: tagId,
+            LimitType: 1,
+            Limit: 990.000,
+            Plate: customer.vehiclePlate,
+            IsError: 0,
+            ResponseCode: 1
+        };
 
-    if (docType === 'json') {
-        console.log('Sending JSON response:', responseJson);
-        res.json(responseJson);
-    } else {
-        console.log('Sending string response:', responseString);
-        res.send(responseString);
+        const responseString = `${deviceId}|${tagId}|1|1|Liter|990,000|${customer.vehiclePlate}|0|1`;
+
+        if (docType === 'json') {
+            console.log('Sending JSON response:', responseJson);
+            res.json(responseJson);
+        } else {
+            console.log('Sending string response:', responseString);
+            res.send(responseString);
+        }
+    } catch (error) {
+        console.error('Error processing AuthorizeRequest:', error);
+        res.status(500).send('Internal server error');
     }
 });
 
 // Sales Registration Route
-app.post('/Api/Vrs/SaleData', (req, res) => {
-    const params = { ...req.query, ...req.body };
+app.post('/Api/Vrs/SaleData', async (req, res) => {
+    const keys = ['userName', 'password', 'datetime', 'deviceId', 'tagId', 'systemSaleId', 'pumpNumber', 'nozzleNumber', 'liter', 'unitPrice', 'amount', 'plate', 'transactionNo', 'docType', 'companyId', 'stationId'];
+    const params = extractParams(req, keys);
     const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType, companyId, stationId } = params;
 
     console.log('SaleData received:', params);
@@ -111,32 +149,55 @@ app.post('/Api/Vrs/SaleData', (req, res) => {
         return;
     }
 
-    const responseJson = {
-        ReqStatus: 1,
-        ProcessStatus: 1,
-        DeviceId: deviceId,
-        TagId: tagId,
-        LimitType: null,
-        Limit: null,
-        Plate: plate,
-        IsError: 0,
-        ResponseCode: 1
-    };
+    try {
+        const transaction = await Transaction.create({
+            companyId: companyId,
+            stationId: stationId,
+            pumpNo: pumpNumber,
+            nozzleNo: nozzleNumber,
+            liters: liter,
+            amount: amount,
+            price: unitPrice,
+            pumpTransNo: transactionNo,
+            transTimedate: datetime,
+            transUnique: systemSaleId,
+            plate: plate,
+            rfidCard: tagId,
+            vrsTag: tagId
+        });
 
-    const responseString = `${deviceId}|${tagId}|1|0|1|2`;
+        const responseJson = {
+            ReqStatus: 1,
+            ProcessStatus: 1,
+            DeviceId: deviceId,
+            TagId: tagId,
+            LimitType: null,
+            Limit: null,
+            Plate: plate,
+            IsError: 0,
+            ResponseCode: 1
+        };
 
-    if (docType === 'json') {
-        console.log('Sending JSON response:', responseJson);
-        res.json(responseJson);
-    } else {
-        console.log('Sending string response:', responseString);
-        res.send(responseString);
+        const responseString = `${deviceId}|${tagId}|1|0|1|2`;
+
+        if (docType === 'json') {
+            console.log('Sending JSON response:', responseJson);
+            res.json(responseJson);
+        } else {
+            console.log('Sending string response:', responseString);
+            res.send(responseString);
+        }
+    } catch (error) {
+        console.error('Error processing SaleData:', error);
+        res.status(500).send('Internal server error');
     }
 });
 
 // Voucher Write Request Route
-app.post('/Api/Vrs/VoucherWriteRequest', (req, res) => {
-    const { userName, password, companyId, stationId, deviceId, barCode, amount } = req.query;
+app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
+    const keys = ['userName', 'password', 'companyId', 'stationId', 'deviceId', 'barCode', 'amount'];
+    const params = extractParams(req, keys);
+    const { userName, password, companyId, stationId, deviceId, barCode, amount } = params;
 
     console.log('VoucherWriteRequest received:', req.query);
 
@@ -155,10 +216,30 @@ app.post('/Api/Vrs/VoucherWriteRequest', (req, res) => {
         return;
     }
 
-    // Generate a random transaction number as a placeholder
-    const transNo = Math.floor(Math.random() * 1000000); 
+    try {
+        // Check if the barcode already exists
+        const existingVoucher = await Voucher.findOne({ where: { barCode: barCode } });
+        if (existingVoucher) {
+            res.status(200).send(`${deviceId}|${barCode}|0|`); // 0 = error or exists
+            return;
+        }
 
-    res.status(200).send(`${deviceId}|${barCode}|1|`); // 1 = OK
+        // Create a new voucher
+        const transNo = Math.floor(Math.random() * 1000000); // Generate a random transaction number
+        const voucher = await Voucher.create({
+            companyId: companyId,
+            stationId: stationId,
+            transNo: transNo,
+            barCode: barCode,
+            amount: amount,
+            status: 1 // 1 = valid
+        });
+
+        res.status(200).send(`${deviceId}|${barCode}|1|`); // 1 = OK
+    } catch (error) {
+        console.error('Error processing VoucherWriteRequest:', error);
+        res.status(500).send('Internal server error');
+    }
 });
 
 app.listen(port, '0.0.0.0', () => {
