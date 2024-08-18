@@ -1,7 +1,5 @@
 const express = require('express');
 const bodyParser = require('body-parser');
-const session = require('express-session');
-const cookieParser = require('cookie-parser');
 const cors = require('cors');
 const Customer = require('./models/customer');
 const Transaction = require('./models/transaction');
@@ -10,9 +8,7 @@ const Voucher = require('./models/voucher');
 const app = express();
 const port = process.env.PORT || 3000; // Listen on port 3000
 
-// Middleware to handle sessions, cookies, and CORS
-app.use(cookieParser());
-app.use(session({ secret: 'ssshhhhh', saveUninitialized: true, resave: true }));
+// Middleware to handle CORS
 app.use(cors());
 app.use(function(req, res, next) {
     res.setHeader("Access-Control-Allow-Origin", "*");
@@ -32,6 +28,22 @@ app.get('/', (req, res) => {
     res.status(200).send('Hello, world!');
 });
 
+// Function to parse configuration bits
+const parseConfigBits = (configBits) => {
+    return {
+        pomperCard: configBits[0] === '1',
+        discountCard: configBits[1] === '1',
+        customerCard: configBits[2] === '1',
+        vehicleIdentification: configBits[3] === '1',
+        carPlate: configBits[4] === '1',
+        carKm: configBits[5] === '1',
+        cardPinCode: configBits[6] === '1',
+        preset: configBits[7] === '1',
+        prepayment: configBits[8] === '1',
+        voucher: configBits[9] === '1'
+    };
+};
+
 // Middleware to log all incoming requests
 app.use((req, res, next) => {
     console.log(`Received ${req.method} request to ${req.url}`);
@@ -41,93 +53,87 @@ app.use((req, res, next) => {
     next();
 });
 
-// Helper function to send the appropriate response
-const sendResponse = (res, responseString) => {
-    res.setHeader('Content-Type', 'text/plain');
-    res.status(200).send(responseString);
-};
-
-// Welcome Request Route
-app.post('/Api/Vrs/WelcomeRequest', (req, res) => {
-    const { userName, password, companyId, stationId, deviceId } = req.query;
-
-    console.log('WelcomeRequest received:', req.query);
-
-    if (!userName || !password || !companyId || !stationId || !deviceId) {
-        return res.status(400).send('Missing required parameters');
-    }
-
-    // Sending a simple welcome response
-    const responseString = `${deviceId}|0|1`;
-    sendResponse(res, responseString);
-});
-
-// Authorize Card Request Route
+// Authorize Request Route
 app.post('/Api/Vrs/AuthorizeCardRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId, stationId } = params;
 
-    console.log('AuthorizeCardRequest received:', params);
+    console.log('AuthorizeRequest received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId) {
-        return res.status(400).send('Missing required parameters');
+    if (!userName || !password || !datetime || !deviceId || !tagId || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
+    }
+
+    const config = configBits ? parseConfigBits(configBits) : {};
+    console.log('Parsed Config Bits:', config);
+
+    // Validate required data fields based on configBits
+    if (config.vehicleIdentification && !params.vehicleIdentificationTag) {
+        res.status(400).send('Missing vehicle identification tag');
+        return;
+    }
+
+    if (config.carPlate && !params.carPlate) {
+        res.status(400).send('Missing car plate number');
+        return;
+    }
+
+    if (config.prepayment && !params.prepayment) {
+        res.status(400).send('Missing prepayment');
+        return;
     }
 
     try {
         const customer = await Customer.findOne({ where: { cardNumber: tagId } });
         if (!customer) {
-            return sendResponse(res, `${deviceId}|${tagId}|1|0|0|0|0|0|0`);
+            res.status(404).send('Customer not found');
+            return;
         }
 
-        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.000|${customer.vehiclePlate}|31|1`;
-        sendResponse(res, responseString);
+        const responseJson = {
+            ReqStatus: 1,
+            ProcessStatus: 1,
+            DeviceId: deviceId,
+            TagId: tagId,
+            LimitType: 1,
+            Limit: 990.000,
+            Plate: customer.vehiclePlate,
+            IsError: 0,
+            ResponseCode: 1
+        };
 
+        const responseString = `${deviceId}|${tagId}|1|1|Liter|990,000|${customer.vehiclePlate}|0|1`;
+
+        if (docType === 'json') {
+            console.log('Sending JSON response:', responseJson);
+            res.json(responseJson);
+        } else {
+            console.log('Sending string response:', responseString);
+            res.send(responseString);
+        }
     } catch (error) {
-        console.error('Error processing AuthorizeCardRequest:', error);
+        console.error('Error processing AuthorizeRequest:', error);
         res.status(500).send('Internal server error');
     }
 });
 
-// Authorize Tag Request Route (similar to AuthorizeCardRequest)
-app.post('/Api/Vrs/AuthorizeTagRequest', async (req, res) => {
-    const params = { ...req.query, ...req.body };
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = params;
-
-    console.log('AuthorizeTagRequest received:', params);
-
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId) {
-        return res.status(400).send('Missing required parameters');
-    }
-
-    try {
-        const customer = await Customer.findOne({ where: { cardNumber: tagId } });
-        if (!customer) {
-            return sendResponse(res, `${deviceId}|${tagId}|1|0|0|0|0|0|0`);
-        }
-
-        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.000|${customer.vehiclePlate}|31|1`;
-        sendResponse(res, responseString);
-
-    } catch (error) {
-        console.error('Error processing AuthorizeTagRequest:', error);
-        res.status(500).send('Internal server error');
-    }
-});
-
-// Sale Data Route
+// Sales Registration Route
 app.post('/Api/Vrs/SaleData', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo } = params;
+    const { userName, password, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType, companyId, stationId } = params;
 
     console.log('SaleData received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo) {
-        return res.status(400).send('Missing required parameters');
+    if (!userName || !password || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
     }
 
     try {
-        await Transaction.create({
-            stationID: stationId,
+        const transaction = await Transaction.create({
+            companyId: companyId,
+            stationId: stationId,
             pumpNo: pumpNumber,
             nozzleNo: nozzleNumber,
             liters: liter,
@@ -141,9 +147,27 @@ app.post('/Api/Vrs/SaleData', async (req, res) => {
             vrsTag: tagId
         });
 
-        const responseString = `${deviceId}|${tagId}|1|0|1|2`;
-        sendResponse(res, responseString);
+        const responseJson = {
+            ReqStatus: 1,
+            ProcessStatus: 1,
+            DeviceId: deviceId,
+            TagId: tagId,
+            LimitType: null,
+            Limit: null,
+            Plate: plate,
+            IsError: 0,
+            ResponseCode: 1
+        };
 
+        const responseString = `${deviceId}|${tagId}|1|0|1|2`;
+
+        if (docType === 'json') {
+            console.log('Sending JSON response:', responseJson);
+            res.json(responseJson);
+        } else {
+            console.log('Sending string response:', responseString);
+            res.send(responseString);
+        }
     } catch (error) {
         console.error('Error processing SaleData:', error);
         res.status(500).send('Internal server error');
@@ -156,82 +180,43 @@ app.post('/Api/Vrs/VoucherWriteRequest', async (req, res) => {
 
     console.log('VoucherWriteRequest received:', req.query);
 
+    console.log('Missing parameter:', {
+        userName: !!userName,
+        password: !!password,
+        companyId: !!companyId,
+        stationId: !!stationId,
+        deviceId: !!deviceId,
+        barCode: !!barCode,
+        amount: !!amount,
+    });
+
     if (!userName || !password || !companyId || !stationId || !deviceId || !barCode || !amount) {
-        return res.status(400).send('Missing required parameters');
+        res.status(400).send('Missing required parameters');
+        return;
     }
 
     try {
+        // Check if the barcode already exists
         const existingVoucher = await Voucher.findOne({ where: { barCode: barCode } });
         if (existingVoucher) {
-            return sendResponse(res, `${deviceId}|${barCode}|${amount}|0|0`);
+            res.status(200).send(`${deviceId}|${barCode}|0|`); // 0 = error or exists
+            return;
         }
 
-        await Voucher.create({
-            stationID: stationId,
-            transNo: Math.floor(Math.random() * 1000000),
+        // Create a new voucher
+        const transNo = Math.floor(Math.random() * 1000000); // Generate a random transaction number
+        const voucher = await Voucher.create({
+            companyId: companyId,
+            stationId: stationId,
+            transNo: transNo,
             barCode: barCode,
             amount: amount,
-            status: 1 // valid
+            status: 1 // 1 = valid
         });
 
-        sendResponse(res, `${deviceId}|${barCode}|${amount}|0|1`);
-
+        res.status(200).send(`${deviceId}|${barCode}|1|`); // 1 = OK
     } catch (error) {
         console.error('Error processing VoucherWriteRequest:', error);
-        res.status(500).send('Internal server error');
-    }
-});
-
-// Voucher Read Request Route
-app.post('/Api/Vrs/VoucherReadRequest', async (req, res) => {
-    const { userName, password, companyId, stationId, deviceId, barCode } = req.query;
-
-    console.log('VoucherReadRequest received:', req.query);
-
-    if (!userName || !password || !companyId || !stationId || !deviceId || !barCode) {
-        return res.status(400).send('Missing required parameters');
-    }
-
-    try {
-        const voucher = await Voucher.findOne({ where: { barCode: barCode } });
-
-        if (!voucher) {
-            return sendResponse(res, `${deviceId}|${barCode}|0.00|1|0`);
-        }
-
-        sendResponse(res, `${deviceId}|${barCode}|${voucher.amount}|0|1`);
-
-    } catch (error) {
-        console.error('Error processing VoucherReadRequest:', error);
-        res.status(500).send('Internal server error');
-    }
-});
-
-// Voucher Clear Request Route
-app.post('/Api/Vrs/VoucherClearRequest', async (req, res) => {
-    const { userName, password, companyId, stationId, deviceId, barCode } = req.query;
-
-    console.log('VoucherClearRequest received:', req.query);
-
-    if (!userName || !password || !companyId || !stationId || !deviceId || !barCode) {
-        return res.status(400).send('Missing required parameters');
-    }
-
-    try {
-        const voucher = await Voucher.findOne({ where: { barCode: barCode } });
-
-        if (!voucher) {
-            return sendResponse(res, `${deviceId}|${barCode}|0.00|1|0`);
-        }
-
-        voucher.status = 2;  // Mark as used or deleted
-        voucher.amount = 0.00; // Set amount to zero as per the client's instructions
-        await voucher.save();
-
-        sendResponse(res, `${deviceId}|${barCode}|0.00|0|1`);
-
-    } catch (error) {
-        console.error('Error processing VoucherClearRequest:', error);
         res.status(500).send('Internal server error');
     }
 });
