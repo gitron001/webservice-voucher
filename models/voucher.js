@@ -2,30 +2,27 @@ const { DataTypes } = require('sequelize');
 const sequelize = require('../database');
 
 const Voucher = sequelize.define('Voucher', {
-    companyID: {
-        type: DataTypes.INTEGER,
-        allowNull: false,
-    },
     stationID: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: false
     },
     transNo: {
         type: DataTypes.INTEGER,
-        allowNull: false,
+        allowNull: false
     },
     barCode: {
         type: DataTypes.STRING(16),
-        allowNull: false,
+        allowNull: false
     },
     amount: {
-        type: DataTypes.FLOAT,
-        allowNull: false,
+        type: DataTypes.DECIMAL(10, 2),
+        allowNull: false
     },
     status: {
-        type: DataTypes.INTEGER,
+        type: DataTypes.TINYINT,
         allowNull: false,
-    },
+        defaultValue: 1 // 1 = valid, 2 = used or can be deleted
+    }
 });
 
 module.exports = Voucher;
