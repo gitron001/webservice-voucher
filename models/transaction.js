@@ -1,22 +1,17 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../database'); // Adjust the path as necessary
+const sequelize = require('../database'); // Ensure your database connection is correctly configured here
 
 const Transaction = sequelize.define('Transaction', {
-    id: {
-        type: DataTypes.INTEGER,
-        primaryKey: true,
-        autoIncrement: true
-    },
     stationID: {
-        type: DataTypes.INTEGER(2),
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     pumpNo: {
-        type: DataTypes.INTEGER(2),
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     nozzleNo: {
-        type: DataTypes.INTEGER(2),
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     liters: {
@@ -32,7 +27,7 @@ const Transaction = sequelize.define('Transaction', {
         allowNull: false
     },
     pumpTransNo: {
-        type: DataTypes.INTEGER(6),
+        type: DataTypes.INTEGER,
         allowNull: false
     },
     transTimedate: {
@@ -45,29 +40,24 @@ const Transaction = sequelize.define('Transaction', {
     },
     plate: {
         type: DataTypes.STRING(12),
-        allowNull: false
+        allowNull: true // Allow null since it may not always be present
     },
     rfidCard: {
-        type: DataTypes.INTEGER(10),
-        allowNull: false
+        type: DataTypes.INTEGER,
+        allowNull: true // Allow null since it may not always be present
     },
     vrsTag: {
-        type: DataTypes.INTEGER(10),
-        allowNull: false
+        type: DataTypes.INTEGER,
+        allowNull: true // Allow null since it may not always be present
     },
-    createdAt: {
-        type: DataTypes.DATE,
+    cardId: {
+        type: DataTypes.INTEGER,
         allowNull: false,
-        defaultValue: DataTypes.NOW
-    },
-    updatedAt: {
-        type: DataTypes.DATE,
-        allowNull: false,
-        defaultValue: DataTypes.NOW
+        defaultValue: 0 // Default to 0 to indicate no card used
     }
 }, {
-    tableName: 'Transactions',
-    timestamps: true
+    timestamps: true,
+    tableName: 'Transactions'
 });
 
 module.exports = Transaction;
