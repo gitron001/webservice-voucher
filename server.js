@@ -117,17 +117,20 @@ app.post('/Api/Vrs/AuthorizeTagRequest', async (req, res) => {
 // Sale Data Route
 app.post('/Api/Vrs/SaleData', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo } = params;
+    const { userName, password, datetime, deviceId, tagId, cardId, systemSaleId, pumpNumber, nozzleNumber, liter, unitPrice, amount, plate, transactionNo, docType, companyId, stationId } = params;
 
     console.log('SaleData received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !plate || !transactionNo) {
-        return res.status(400).send('Missing required parameters');
+    if (!userName || !password || !datetime || !deviceId || !systemSaleId || !pumpNumber || !nozzleNumber || !liter || !unitPrice || !amount || !transactionNo || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
     }
 
     try {
-        await Transaction.create({
-            stationID: stationId,
+        // Handle when tagId (car-tag) and cardId (RFID card) are zero
+        const transaction = await Transaction.create({
+            companyId: companyId,
+            stationId: stationId,
             pumpNo: pumpNumber,
             nozzleNo: nozzleNumber,
             liters: liter,
@@ -136,14 +139,29 @@ app.post('/Api/Vrs/SaleData', async (req, res) => {
             pumpTransNo: transactionNo,
             transTimedate: datetime,
             transUnique: systemSaleId,
-            plate: plate,
-            rfidCard: tagId,
-            vrsTag: tagId
+            plate: plate || '', // If plate is not provided, use an empty string
+            rfidCard: cardId || 0, // Use 0 if cardId is not provided
+            vrsTag: tagId || 0, // Use 0 if tagId is not provided
         });
 
         const responseString = `${deviceId}|${tagId}|1|0|1|2`;
-        sendResponse(res, responseString);
 
+        if (docType === 'json') {
+            res.json({
+                ReqStatus: 1,
+                ProcessStatus: 1,
+                DeviceId: deviceId,
+                TagId: tagId,
+                CardId: cardId,
+                LimitType: null,
+                Limit: null,
+                Plate: plate,
+                IsError: 0,
+                ResponseCode: 1
+            });
+        } else {
+            res.send(responseString);
+        }
     } catch (error) {
         console.error('Error processing SaleData:', error);
         res.status(500).send('Internal server error');
