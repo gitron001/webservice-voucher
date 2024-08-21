@@ -48,7 +48,7 @@ const sendResponse = (res, responseString) => {
 };
 
 // Welcome Request Route
-app.post('/Api/Vrs/WelcomeRequest', (req, res) => {
+app.post('/Api/Vrs/WelcomeRequest', async (req, res) => {
     const { userName, password, companyId, stationId, deviceId } = req.query;
 
     console.log('WelcomeRequest received:', req.query);
@@ -57,9 +57,21 @@ app.post('/Api/Vrs/WelcomeRequest', (req, res) => {
         return res.status(400).send('Missing required parameters');
     }
 
-    // Sending a simple welcome response
-    const responseString = `${deviceId}|0|1`;
-    sendResponse(res, responseString);
+    try {
+        const customer = await Customer.findOne({ where: { stationId: stationId } });
+
+        let response;
+        if (customer && customer.disable) {
+            response = `${deviceId}|0|1|IFZBB`;
+        } else {
+            response = `${deviceId}|0|1`;
+        }
+
+        res.send(response);
+    } catch (error) {
+        console.error('Error processing WelcomeRequest:', error);
+        res.status(500).send('Internal server error');
+    }
 });
 
 // Authorize Card Request Route
