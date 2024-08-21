@@ -65,23 +65,44 @@ app.post('/Api/Vrs/WelcomeRequest', (req, res) => {
 // Authorize Card Request Route
 app.post('/Api/Vrs/AuthorizeCardRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId, stationId } = params;
 
     console.log('AuthorizeCardRequest received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId) {
-        return res.status(400).send('Missing required parameters');
+    if (!userName || !password || !datetime || !deviceId || !tagId || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
     }
+
+    const config = configBits ? parseConfigBits(configBits) : {};
+    console.log('Parsed Config Bits:', config);
 
     try {
         const customer = await Customer.findOne({ where: { cardNumber: tagId } });
         if (!customer) {
-            return sendResponse(res, `${deviceId}|${tagId}|1|0|0|0|0|0|0`);
+            res.status(404).send('Customer not found');
+            return;
         }
 
-        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.000|${customer.vehiclePlate}|31|1`;
-        sendResponse(res, responseString);
+        const responseJson = {
+            ReqStatus: 1,
+            ProcessStatus: 1,
+            DeviceId: deviceId,
+            TagId: tagId,
+            LimitType: "Liter",
+            Limit: customer.limit ? customer.limit.toFixed(2) : "0.00",  // Ensure 2 decimal places
+            Plate: customer.vehiclePlate,
+            IsError: 0,
+            ResponseCode: 1
+        };
 
+        const responseString = `${deviceId}|${tagId}|1|1|Liter|${responseJson.Limit}|${customer.vehiclePlate}|31|1`;
+
+        if (docType === 'json') {
+            res.json(responseJson);
+        } else {
+            res.send(responseString);
+        }
     } catch (error) {
         console.error('Error processing AuthorizeCardRequest:', error);
         res.status(500).send('Internal server error');
@@ -91,23 +112,44 @@ app.post('/Api/Vrs/AuthorizeCardRequest', async (req, res) => {
 // Authorize Tag Request Route (similar to AuthorizeCardRequest)
 app.post('/Api/Vrs/AuthorizeTagRequest', async (req, res) => {
     const params = { ...req.query, ...req.body };
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = params;
+    const { userName, password, datetime, deviceId, tagId, docType, configBits, companyId, stationId } = params;
 
     console.log('AuthorizeTagRequest received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId) {
-        return res.status(400).send('Missing required parameters');
+    if (!userName || !password || !datetime || !deviceId || !tagId || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
     }
+
+    const config = configBits ? parseConfigBits(configBits) : {};
+    console.log('Parsed Config Bits:', config);
 
     try {
         const customer = await Customer.findOne({ where: { cardNumber: tagId } });
         if (!customer) {
-            return sendResponse(res, `${deviceId}|${tagId}|1|0|0|0|0|0|0`);
+            res.status(404).send('Customer not found');
+            return;
         }
 
-        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.000|${customer.vehiclePlate}|31|1`;
-        sendResponse(res, responseString);
+        const responseJson = {
+            ReqStatus: 1,
+            ProcessStatus: 1,
+            DeviceId: deviceId,
+            TagId: tagId,
+            LimitType: "Liter",
+            Limit: customer.limit ? customer.limit.toFixed(2) : "0.00",  // Ensure 2 decimal places
+            Plate: customer.vehiclePlate,
+            IsError: 0,
+            ResponseCode: 1
+        };
 
+        const responseString = `${deviceId}|${tagId}|1|1|Liter|${responseJson.Limit}|${customer.vehiclePlate}|31|1`;
+
+        if (docType === 'json') {
+            res.json(responseJson);
+        } else {
+            res.send(responseString);
+        }
     } catch (error) {
         console.error('Error processing AuthorizeTagRequest:', error);
         res.status(500).send('Internal server error');
