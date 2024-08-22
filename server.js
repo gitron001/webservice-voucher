@@ -76,51 +76,63 @@ app.post('/Api/Vrs/WelcomeRequest', async (req, res) => {
 
 // Authorize Card Request Route
 app.post('/Api/Vrs/AuthorizeCardRequest', async (req, res) => {
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = req.query;
+    const params = { ...req.query, ...req.body };
+    const { userName, password, companyId, stationId, datetime, deviceId, cardId } = params;
 
-    console.log('AuthorizeCardRequest received:', req.query);
+    console.log('AuthorizeCardRequest received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId) {
-        return res.status(200).send(`${deviceId}|${tagId}|0|0|Liter|0.00||0|1`);
+    if (!userName || !password || !datetime || !deviceId || !cardId || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
     }
 
     try {
-        const customer = await Customer.findOne({ where: { cardNumber: tagId } });
+        const customer = await Customer.findOne({ where: { cardNumber: cardId } });
 
         if (!customer) {
-            return res.status(200).send(`${deviceId}|${tagId}|0|0|Liter|0.00||0|1`);
+            // Respond with an error if the customer is not found
+            return res.status(200).send(`${deviceId}|${cardId}|0|1|Liter|0.00||0|1`);
         }
 
-        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.00|${customer.vehiclePlate}|31|1`;
-        return res.status(200).send(responseString);
+        const discount = 10; // Example discount value, adjust as needed
+
+        const responseString = `${deviceId}|${cardId}|1|1|Liter|990.00|${customer.vehiclePlate}|31|${discount}|0`;
+
+        res.status(200).send(responseString);
     } catch (error) {
         console.error('Error processing AuthorizeCardRequest:', error);
-        return res.status(200).send(`${deviceId}|${tagId}|0|0|Liter|0.00||0|1`);
+        res.status(500).send('Internal server error');
     }
 });
 
-// Authorize Tag Request Route (similar to AuthorizeCardRequest)
+// Authorize Tag Request Route
 app.post('/Api/Vrs/AuthorizeTagRequest', async (req, res) => {
-    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = req.query;
+    const params = { ...req.query, ...req.body };
+    const { userName, password, companyId, stationId, datetime, deviceId, tagId } = params;
 
-    console.log('AuthorizeTagRequest received:', req.query);
+    console.log('AuthorizeTagRequest received:', params);
 
-    if (!userName || !password || !companyId || !stationId || !datetime || !deviceId || !tagId) {
-        return res.status(200).send(`${deviceId}|${tagId}|0|0|Liter|0.00||0|1`);
+    if (!userName || !password || !datetime || !deviceId || !tagId || !companyId || !stationId) {
+        res.status(400).send('Missing required parameters');
+        return;
     }
 
     try {
         const customer = await Customer.findOne({ where: { cardNumber: tagId } });
 
         if (!customer) {
-            return res.status(200).send(`${deviceId}|${tagId}|0|0|Liter|0.00||0|1`);
+            // Respond with an error if the customer is not found
+            return res.status(200).send(`${deviceId}|${tagId}|0|1|Liter|0.00||0|1`);
         }
 
-        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.00|${customer.vehiclePlate}|31|1`;
-        return res.status(200).send(responseString);
+        const discount = 10; // Example discount value, adjust as needed
+
+        const responseString = `${deviceId}|${tagId}|1|1|Liter|990.00|${customer.vehiclePlate}|31|${discount}|0`;
+
+        res.status(200).send(responseString);
     } catch (error) {
         console.error('Error processing AuthorizeTagRequest:', error);
-        return res.status(200).send(`${deviceId}|${tagId}|0|0|Liter|0.00||0|1`);
+        res.status(500).send('Internal server error');
     }
 });
 
